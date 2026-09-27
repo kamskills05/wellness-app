@@ -1,0 +1,57 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Manrope:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 43 33% 95%;
+    --foreground: 153 17% 14%;
+    --card: 43 100% 99%;
+    --card-foreground: 153 17% 14%;
+    --popover: 43 100% 99%;
+    --popover-foreground: 153 17% 14%;
+    --primary: 153 22% 26%;
+    --primary-foreground: 43 60% 97%;
+    --secondary: 41 28% 90%;
+    --secondary-foreground: 153 17% 14%;
+    --muted: 41 28% 90%;
+    --muted-foreground: 105 4% 42%;
+    --accent: 27 45% 86%;
+    --accent-foreground: 22 50% 28%;
+    --destructive: 0 60% 48%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 41 23% 85%;
+    --input: 41 23% 82%;
+    --ring: 153 22% 26%;
+    --chart-1: 153 22% 36%;
+    --chart-2: 22 50% 55%;
+    --chart-3: 197 25% 40%;
+    --chart-4: 43 60% 60%;
+    --chart-5: 340 30% 55%;
+    --radius: 0.9rem;
+    --font-heading: 'Fraunces', Georgia, serif;
+    --font-body: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+    --font-display: 'Fraunces', Georgia, serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    --sidebar-background: 43 33% 95%;
+    --sidebar-foreground: 153 17% 14%;
+    --sidebar-primary: 153 22% 26%;
+    --sidebar-primary-foreground: 43 60% 97%;
+    --sidebar-accent: 41 28% 90%;
+    --sidebar-accent-foreground: 153 17% 14%;
+    --sidebar-border: 41 23% 85%;
+    --sidebar-ring: 153 22% 26%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+  }
+}
