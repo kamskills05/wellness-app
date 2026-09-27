@@ -3,9 +3,6 @@
 
 create extension if not exists "pgcrypto";
 
--- ---------------------------------------------------------------------------
--- Helpers
--- ---------------------------------------------------------------------------
 create or replace function public.set_updated_at()
 returns trigger
 language plpgsql
@@ -16,22 +13,6 @@ begin
 end;
 $$;
 
-create or replace function public.is_admin()
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select exists (
-    select 1 from public.profiles p
-    where p.id = (select auth.uid()) and p.role = 'admin'
-  );
-$$;
-
--- ---------------------------------------------------------------------------
--- profiles (Base44 User)
--- ---------------------------------------------------------------------------
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text,
@@ -74,9 +55,21 @@ create trigger profiles_set_updated_at
   before update on public.profiles
   for each row execute function public.set_updated_at();
 
--- ---------------------------------------------------------------------------
--- problem_types
--- ---------------------------------------------------------------------------
+create or replace function public.is_admin()
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+begin
+  return exists (
+    select 1 from public.profiles p
+    where p.id = (select auth.uid()) and p.role = 'admin'
+  );
+end;
+$$;
+
 create table if not exists public.problem_types (
   id uuid primary key default gen_random_uuid(),
   name jsonb not null default '{}'::jsonb,
@@ -91,9 +84,6 @@ create trigger problem_types_set_updated_at
   before update on public.problem_types
   for each row execute function public.set_updated_at();
 
--- ---------------------------------------------------------------------------
--- questionnaires
--- ---------------------------------------------------------------------------
 create table if not exists public.questionnaires (
   id uuid primary key default gen_random_uuid(),
   problem_type_id uuid references public.problem_types(id) on delete set null,
@@ -110,9 +100,6 @@ create trigger questionnaires_set_updated_at
   before update on public.questionnaires
   for each row execute function public.set_updated_at();
 
--- ---------------------------------------------------------------------------
--- task_definitions
--- ---------------------------------------------------------------------------
 create table if not exists public.task_definitions (
   id uuid primary key default gen_random_uuid(),
   name jsonb not null default '{}'::jsonb,
@@ -130,9 +117,6 @@ create trigger task_definitions_set_updated_at
   before update on public.task_definitions
   for each row execute function public.set_updated_at();
 
--- ---------------------------------------------------------------------------
--- patient_task_assignments
--- ---------------------------------------------------------------------------
 create table if not exists public.patient_task_assignments (
   id uuid primary key default gen_random_uuid(),
   patient_user_id uuid not null references public.profiles(id) on delete cascade,
@@ -153,9 +137,6 @@ create trigger patient_task_assignments_set_updated_at
   before update on public.patient_task_assignments
   for each row execute function public.set_updated_at();
 
--- ---------------------------------------------------------------------------
--- submissions
--- ---------------------------------------------------------------------------
 create table if not exists public.submissions (
   id uuid primary key default gen_random_uuid(),
   patient_user_id uuid not null references public.profiles(id) on delete cascade,
@@ -174,9 +155,6 @@ create trigger submissions_set_updated_at
   before update on public.submissions
   for each row execute function public.set_updated_at();
 
--- ---------------------------------------------------------------------------
--- sensation_notes
--- ---------------------------------------------------------------------------
 create table if not exists public.sensation_notes (
   id uuid primary key default gen_random_uuid(),
   patient_user_id uuid not null references public.profiles(id) on delete cascade,
@@ -193,9 +171,6 @@ create trigger sensation_notes_set_updated_at
   before update on public.sensation_notes
   for each row execute function public.set_updated_at();
 
--- ---------------------------------------------------------------------------
--- pending_invites (replaces Base44 users.inviteUser email side-effect)
--- ---------------------------------------------------------------------------
 create table if not exists public.pending_invites (
   id uuid primary key default gen_random_uuid(),
   email text not null,
@@ -204,9 +179,6 @@ create table if not exists public.pending_invites (
   created_at timestamptz not null default now()
 );
 
--- ---------------------------------------------------------------------------
--- RLS
--- ---------------------------------------------------------------------------
 alter table public.profiles enable row level security;
 alter table public.problem_types enable row level security;
 alter table public.questionnaires enable row level security;
@@ -216,7 +188,6 @@ alter table public.submissions enable row level security;
 alter table public.sensation_notes enable row level security;
 alter table public.pending_invites enable row level security;
 
--- profiles
 drop policy if exists "profiles_select" on public.profiles;
 create policy "profiles_select" on public.profiles
   for select to authenticated
@@ -228,7 +199,6 @@ create policy "profiles_update_own" on public.profiles
   using (id = (select auth.uid()) or public.is_admin())
   with check (id = (select auth.uid()) or public.is_admin());
 
--- catalog: public read for signed-in users, admin write
 drop policy if exists "problem_types_select" on public.problem_types;
 create policy "problem_types_select" on public.problem_types
   for select to authenticated using (true);
@@ -259,7 +229,6 @@ create policy "task_definitions_write" on public.task_definitions
   using (public.is_admin())
   with check (public.is_admin());
 
--- assignments
 drop policy if exists "assignments_select" on public.patient_task_assignments;
 create policy "assignments_select" on public.patient_task_assignments
   for select to authenticated
@@ -271,7 +240,6 @@ create policy "assignments_write" on public.patient_task_assignments
   using (public.is_admin())
   with check (public.is_admin());
 
--- submissions
 drop policy if exists "submissions_select" on public.submissions;
 create policy "submissions_select" on public.submissions
   for select to authenticated
@@ -293,7 +261,6 @@ create policy "submissions_delete" on public.submissions
   for delete to authenticated
   using (created_by_id = (select auth.uid()) or public.is_admin());
 
--- sensation notes
 drop policy if exists "notes_select" on public.sensation_notes;
 create policy "notes_select" on public.sensation_notes
   for select to authenticated
@@ -315,16 +282,12 @@ create policy "notes_delete" on public.sensation_notes
   for delete to authenticated
   using (created_by_id = (select auth.uid()) or public.is_admin());
 
--- invites: admin only
 drop policy if exists "invites_admin" on public.pending_invites;
 create policy "invites_admin" on public.pending_invites
   for all to authenticated
   using (public.is_admin())
   with check (public.is_admin());
 
--- ---------------------------------------------------------------------------
--- Grants
--- ---------------------------------------------------------------------------
 grant usage on schema public to anon, authenticated;
 grant select on public.problem_types, public.questionnaires, public.task_definitions to anon;
 grant select, insert, update, delete on
@@ -337,10 +300,3 @@ grant select, insert, update, delete on
   public.sensation_notes,
   public.pending_invites
 to authenticated;
-
--- Storage: no upload call sites in this app.
--- If you add a bucket later (suggested name: media):
---   insert into storage.buckets (id, name, public) values ('media', 'media', true);
---   create policy "media_public_read" on storage.objects for select using (bucket_id = 'media');
---   create policy "media_auth_insert" on storage.objects for insert to authenticated
---     with check (bucket_id = 'media' and (select auth.uid()) is not null);
