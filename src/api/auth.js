@@ -60,9 +60,7 @@ export const auth = {
     throwIfError(error);
   },
 
-  setToken() {
-    // Session is persisted by supabase-js; no-op for compatibility.
-  },
+  setToken() {},
 
   async loginWithProvider(provider, returnTo = "/") {
     const { error } = await supabase.auth.signInWithOAuth({
@@ -108,13 +106,15 @@ export const auth = {
 
 export const users = {
   async inviteUser(email, role = "user") {
-    const { data: sessionData } = await supabase.auth.getUser();
-    const { error } = await supabase.from("pending_invites").insert({
-      email,
-      role,
-      invited_by: sessionData?.user?.id || null,
+    const { data, error } = await supabase.functions.invoke("invite-patient", {
+      body: {
+        email,
+        role,
+        redirectTo: typeof window !== "undefined" ? `${window.location.origin}/` : undefined,
+      },
     });
-    throwIfError(error);
-    return { email, role };
+    if (error) throw new Error(error.message || "Invite failed");
+    if (data?.error) throw new Error(data.error);
+    return data || { email, role };
   },
 };
