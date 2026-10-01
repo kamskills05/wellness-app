@@ -1,25 +1,16 @@
 import { createClient } from "@supabase/supabase-js";
 
-export const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
-export const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
-export const hasSupabaseConfig = Boolean(supabaseUrl && supabaseAnonKey);
+const url = import.meta.env.VITE_SUPABASE_URL;
+const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-function makeClient() {
-  if (!hasSupabaseConfig) {
-    console.error(
-      "Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY. Set them in Vercel and redeploy."
-    );
-    return createClient("https://placeholder.supabase.co", "public-anon-key-missing", {
-      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-    });
-  }
-  return createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-    },
-  });
+if (!url || !anonKey) {
+  console.warn("Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY");
 }
 
-export const supabase = makeClient();
+export const supabase = createClient(url || "", anonKey || "", {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+});
