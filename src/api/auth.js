@@ -14,7 +14,13 @@ async function mergeMe() {
     throw err;
   }
   const user = sessionData.user;
-  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
+  let profile = null;
+  try {
+    const { data, error } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
+    if (!error) profile = data;
+  } catch {
+    profile = null;
+  }
   return mapRow({
     id: user.id,
     email: user.email,
